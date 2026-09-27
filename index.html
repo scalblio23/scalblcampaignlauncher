@@ -82,7 +82,7 @@ button:disabled{opacity:.4;cursor:default}
     <div class="runbox"><select id="runSelect" aria-label="Saved runs"></select><button id="newRun">New client</button><button id="deleteRun" class="small">Delete</button></div>
   </div>
   <div class="progress"><i id="bar"></i></div>
-  <div class="meta"><span id="metaL"></span><span id="metaR"></span></div>
+  <div class="meta"><span id="metaL"></span><span id="sync">Connecting…</span><span id="metaR"></span></div>
   <div class="jump" id="jump"></div>
   <div class="card" id="card"></div>
 </div>
@@ -135,9 +135,36 @@ let runs={}, current=null, idx=0, summary=false;
 const $=id=>document.getElementById(id);
 function clean(){ Object.keys(runs).forEach(id=>{const r=runs[id]; if(!r||typeof r!=='object'||!r.values||!r.files){ if(r&&r.values&&!r.files)r.files={}; else delete runs[id]; } }); }
 function load(){ try{runs=JSON.parse(localStorage.getItem(KEY)||'{}')||{};}catch(e){runs={};} clean(); }
-function save(){ try{localStorage.setItem(KEY,JSON.stringify(runs));}catch(e){ Object.values(runs).forEach(r=>Object.values(r.files||{}).forEach(fs=>fs.forEach(f=>delete f.data))); try{localStorage.setItem(KEY,JSON.stringify(runs));toast('Storage full: file previews dropped');}catch(e2){} } }
+function saveLocal(){ try{localStorage.setItem(KEY,JSON.stringify(runs));}catch(e){ Object.values(runs).forEach(r=>Object.values(r.files||{}).forEach(fs=>fs.forEach(f=>delete f.data))); try{localStorage.setItem(KEY,JSON.stringify(runs));toast('Storage full: file previews dropped');}catch(e2){} } }
+function save(){ if(runs[current])runs[current].updated=Date.now(); saveLocal(); queuePush(current); }
 function run(){return runs[current];}
 function newRun(){ const id='r'+Date.now(); runs[id]={values:{},files:{},created:new Date().toISOString().slice(0,10)}; current=id; idx=0; summary=false; save(); render(); }
+
+// Cloud sync: runs are stored in Neon Postgres via /api/runs. localStorage stays as an offline cache.
+const API='/api/runs', KEYSTORE='scalbl-app-key', MAXBODY=4*1024*1024;
+let cloud=false; const pushTimers={};
+function setSync(s){ const el=$('sync'); if(el)el.textContent=s; }
+function appKey(){ try{return localStorage.getItem(KEYSTORE)||'';}catch(e){return '';} }
+async function api(method,id,body,retried){
+  const res=await fetch(API+(id?'?id='+encodeURIComponent(id):''),{method,headers:{'Content-Type':'application/json','x-app-key':appKey()},body:body===undefined?undefined:body});
+  if(res.status===401&&!retried){ const k=prompt('Enter the team password to sync launch runs'); if(k){ try{localStorage.setItem(KEYSTORE,k);}catch(e){} return api(method,id,body,true); } }
+  if(!res.ok)throw new Error(method+' '+res.status);
+  return res.json();
+}
+function payload(r){ let b=JSON.stringify(r); if(b.length>MAXBODY){ const c=JSON.parse(b); Object.values(c.files||{}).forEach(fs=>fs.forEach(f=>delete f.data)); b=JSON.stringify(c); } return b; }
+function queuePush(id){ if(!cloud||!id)return; clearTimeout(pushTimers[id]); setSync('Saving…'); pushTimers[id]=setTimeout(()=>push(id),600); }
+async function push(id){ const r=runs[id]; if(!r)return; try{ await api('PUT',id,payload(r)); r.synced=true; saveLocal(); if(!Object.keys(pushTimers).some(k=>k!==id&&pushTimers[k]))setSync('Saved to cloud'); }catch(e){ setSync('Cloud save failed: kept on this device'); } finally{ delete pushTimers[id]; } }
+async function sync(){
+  try{
+    const remote=(await api('GET')).runs||{}; cloud=true;
+    const blank=r=>!Object.values(r.values).some(v=>v&&v.trim())&&!Object.values(r.files).some(f=>f.length);
+    Object.keys(runs).forEach(id=>{ if(!remote[id]&&(runs[id].synced||(blank(runs[id])&&Object.keys(remote).length)))delete runs[id]; }); // deleted elsewhere, or a blank placeholder
+    if(!runs[current])current=null;
+    Object.entries(remote).forEach(([id,r])=>{ if(!r||!r.values)return; if(!r.files)r.files={}; const l=runs[id]; if(!l||(r.updated||0)>=(l.updated||0))runs[id]={...r,synced:true}; });
+    const toPush=Object.keys(runs).filter(id=>!remote[id]||(runs[id].updated||0)>(remote[id].updated||0));
+    saveLocal(); render(); setSync('Saved to cloud'); toPush.forEach(push);
+  }catch(e){ cloud=false; setSync('Offline: saved on this device only'); }
+}
 function toast(m){ const t=$('toast'); t.textContent=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),1400); }
 function copy(text){ navigator.clipboard.writeText(text).then(()=>toast('Copied')).catch(()=>{const ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();try{document.execCommand('copy');toast('Copied');}catch(e){toast('Select and copy manually');}ta.remove();}); }
 function esc(s){return String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
@@ -174,10 +201,10 @@ function renderSummary(){ const r=run(); const miss=Q.filter(q=>!answered(r,q));
 function render(){ try{ if(!current||!runs[current]){const ids=Object.keys(runs); if(ids.length)current=ids[ids.length-1]; else{newRun();return;}} renderRunSelect(); renderTop(); if(summary)renderSummary(); else renderQ(); }catch(e){ runs={}; current=null; idx=0; summary=false; try{localStorage.removeItem(KEY);}catch(x){} newRun(); } }
 $('runSelect').onchange=e=>{current=e.target.value;idx=0;summary=false;render();};
 $('newRun').onclick=newRun;
-$('deleteRun').onclick=()=>{ if(Object.keys(runs).length<=1){toast('Keep at least one run');return;} const b=$('deleteRun'); if(b.dataset.arm){delete runs[current];current=null;delete b.dataset.arm;b.textContent='Delete';save();render();} else {b.dataset.arm='1';b.textContent='Confirm delete';setTimeout(()=>{delete b.dataset.arm;b.textContent='Delete';},2500);} };
-function start(){load();render();}
+$('deleteRun').onclick=()=>{ if(Object.keys(runs).length<=1){toast('Keep at least one run');return;} const b=$('deleteRun'); if(b.dataset.arm){const id=current; clearTimeout(pushTimers[id]); delete pushTimers[id]; delete runs[id];current=null;delete b.dataset.arm;b.textContent='Delete';saveLocal();render(); if(cloud)api('DELETE',id).then(()=>setSync('Saved to cloud')).catch(()=>setSync('Cloud delete failed'));} else {b.dataset.arm='1';b.textContent='Confirm delete';setTimeout(()=>{delete b.dataset.arm;b.textContent='Delete';},2500);} };
+function start(){load();render();sync();}
 window.claude?.hot?.snapshot?.(()=>({runs,current,idx,summary}));
-if(window.claude?.hot?.ready){window.claude.hot.ready(d=>{load();if(d&&d.runs&&d.current&&d.runs[d.current]&&d.runs[d.current].files){runs=d.runs;current=d.current;idx=d.idx||0;summary=!!d.summary;clean();}render();});}else start();
+if(window.claude?.hot?.ready){window.claude.hot.ready(d=>{load();if(d&&d.runs&&d.current&&d.runs[d.current]&&d.runs[d.current].files){runs=d.runs;current=d.current;idx=d.idx||0;summary=!!d.summary;clean();}render();sync();});}else start();
 </script>
 </body>
 </html>
