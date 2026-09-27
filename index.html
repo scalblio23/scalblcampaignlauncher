@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Scalbl Launch Runner</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --bg:#f5f4f0;--surface:#ffffff;--surface-2:#ecebe6;--line:#d9d7cf;--ink:#1c1b18;--muted:#6a675f;
+  --accent:#d9480f;--accent-ink:#ffffff;--accent-soft:#fbe6dc;--good:#2b7a4b;--good-soft:#dff0e5;
+  --mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  --sans:'IBM Plex Sans',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#16160f;--surface:#1f1f18;--surface-2:#292920;--line:#3a3a2f;--ink:#efede6;--muted:#a09d92;
+    --accent:#ff7a3d;--accent-ink:#1c1b18;--accent-soft:#3a2418;--good:#5fc282;--good-soft:#1f3527;color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#16160f;--surface:#1f1f18;--surface-2:#292920;--line:#3a3a2f;--ink:#efede6;--muted:#a09d92;
+  --accent:#ff7a3d;--accent-ink:#1c1b18;--accent-soft:#3a2418;--good:#5fc282;--good-soft:#1f3527;color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.5;margin:0}
+.wrap{max-width:680px;margin:0 auto;padding-inline:16px;padding-block:20px 60px}
+h1{font-size:20px;margin:0;font-weight:700;letter-spacing:-.01em}
+.eyebrow{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600}
+.top{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;justify-content:space-between;margin-bottom:14px}
+.runbox{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+input[type=text],textarea,select{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px 14px;width:100%}
+textarea{min-height:120px;resize:vertical}
+input:focus,textarea:focus,select:focus,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+select{width:auto;padding:8px 10px}
+button{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:8px;padding:10px 16px;font-weight:500}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+button.small{padding:4px 8px;font-size:12px;border-radius:6px}
+button.link{border:none;background:none;color:var(--muted);padding:6px 8px;text-decoration:underline}
+button:disabled{opacity:.4;cursor:default}
+.progress{height:6px;background:var(--surface-2);border-radius:3px;overflow:hidden;margin:4px 0 6px}
+.progress i{display:block;height:100%;background:var(--accent);width:0;transition:width .2s}
+.meta{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:24px 22px;margin-top:18px}
+.q{font-size:22px;font-weight:600;line-height:1.3;margin:6px 0 6px;text-wrap:balance}
+.hint{color:var(--muted);margin:0 0 16px;font-size:14px}
+.prompt{margin:14px 0 0;background:var(--surface-2);border-radius:8px;padding:12px 14px;font-family:var(--mono);font-size:12.5px;white-space:pre-wrap;position:relative;padding-right:70px}
+.prompt button{position:absolute;top:8px;right:8px}
+.prompt-label{font-size:12px;color:var(--muted);margin-top:14px}
+.drop{margin-top:10px;border:1.5px dashed var(--line);border-radius:8px;padding:14px;text-align:center;color:var(--muted);font-size:14px;cursor:pointer}
+.drop.over{border-color:var(--accent);background:var(--accent-soft)}
+.drop input{display:none}
+.files{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+.file{display:flex;align-items:center;gap:10px;font-size:13px;background:var(--surface-2);border-radius:6px;padding:6px 10px}
+.file img{width:40px;height:40px;object-fit:cover;border-radius:4px}
+.file .n{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.file .s{color:var(--muted);font-family:var(--mono);font-size:11px}
+.nav{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:22px;flex-wrap:wrap}
+.nav .r{display:flex;gap:8px;align-items:center}
+.phase-tag{display:inline-block;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);background:var(--accent-soft);padding:3px 8px;border-radius:4px}
+.summary h3{font-size:13px;margin:22px 0 8px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.summary h3:first-of-type{margin-top:0}
+.row{display:grid;grid-template-columns:1fr;gap:2px;padding:8px 0;border-bottom:1px solid var(--line);font-size:14px}
+.row .k{color:var(--muted);font-size:12px}
+.row .v{white-space:pre-wrap;word-break:break-word}
+.row .v.empty{color:var(--accent);font-style:italic}
+.row .v a{color:var(--accent)}
+.jump{display:flex;flex-wrap:wrap;gap:4px;margin-top:10px}
+.jump button{padding:3px 7px;font-size:11px;border-radius:4px;font-family:var(--mono)}
+.jump button.done{background:var(--good-soft);border-color:var(--good)}
+.jump button.cur{border-color:var(--accent);background:var(--accent-soft)}
+.toast{position:fixed;bottom:calc(16px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 14px;border-radius:6px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.show{opacity:1}
+@media (prefers-reduced-motion:reduce){.progress i,.toast{transition:none}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="top">
+    <div><div class="eyebrow">Meta campaign build</div><h1>Scalbl Launch Runner</h1></div>
+    <div class="runbox"><select id="runSelect" aria-label="Saved runs"></select><button id="newRun">New client</button><button id="deleteRun" class="small">Delete</button></div>
+  </div>
+  <div class="progress"><i id="bar"></i></div>
+  <div class="meta"><span id="metaL"></span><span id="metaR"></span></div>
+  <div class="jump" id="jump"></div>
+  <div class="card" id="card"></div>
+</div>
+<div class="toast" id="toast">Copied</div>
+
+<script>
+// type: text | long | file | both (text + file)
+const Q = [
+ {p:'Onboarding',k:'client',q:'What is the client name?',h:'This names the run. Use the business name, e.g. Unitree Finance.',t:'text'},
+ {p:'Onboarding',k:'launchForm',q:'Input here (file or text) the Campaign Launch Form',h:'Export it from Notion as PDF and drop it here, or paste the Notion link.',t:'both'},
+ {p:'Onboarding',k:'onboardForm',q:'Input here (file or text) the Onboarding Form',h:'Same as above: PDF export or Notion link.',t:'both'},
+ {p:'Onboarding',k:'refChat',q:'Paste the link to the reference chat',h:'Create a chat (ChatGPT, Claude or Hermes), upload both forms, ask for a top-line summary of the client.',t:'text'},
+ {p:'Onboarding',k:'clientSummary',q:'Paste the client summary from the chat',h:'A few lines is enough. This carries into the brief.',t:'long'},
+ {p:'Brief',k:'briefLink',q:'Paste the link to the new Brief page in Notion',h:'Agency Hub → client → new page called Brief. Copy the structure of a previous brief.',t:'text'},
+ {p:'Brief',k:'product',q:'What is the product or service?',h:'Ask the reference chat if unsure. Plain English.',t:'long'},
+ {p:'Brief',k:'audience',q:'Who is it for?',t:'long'},
+ {p:'Brief',k:'problem',q:'What problem does it solve?',t:'long'},
+ {p:'Brief',k:'different',q:'What makes it different?',t:'long'},
+ {p:'Brief',k:'qualifiers',q:'What are the qualifiers and disqualifiers?',h:'Be strict. Strong qualifiers matter most. These become the survey later.',t:'long'},
+ {p:'Brief',k:'swipes',q:'Input the swiped competitor ads (links, screenshots, copy)',h:'Facebook Ads Library. Australia, last 12 months. Top-left ads have run longest. Skip AdSpy.',t:'both'},
+ {p:'Brief',k:'research',q:'Input the customer research findings',h:'Run deep research in Hermes: pains, objections, their language, what they have tried. Paste the useful parts or drop the export.',t:'both'},
+ {p:'Brief',k:'angles',q:'What are the 3 chosen angles?',h:'Write 5–10 in Hemingway, keep the 3 most believable. One per line.',t:'long'},
+ {p:'Brief',k:'ad1',q:'Paste Ad Copy 1',h:'Hook → Benefit → Problem → Usual solution → New solution → Proof → CTA. Capitals on key words, 1–2 emojis max.',t:'long'},
+ {p:'Brief',k:'ad2',q:'Paste Ad Copy 2',t:'long'},
+ {p:'Brief',k:'ad3',q:'Paste Ad Copy 3',t:'long'},
+ {p:'Creatives',k:'statics',q:'Input the final static creatives',h:'3–5 variations, one change each, tiny qualifier line on every one.',t:'file'},
+ {p:'Creatives',k:'videos',q:'Input the final video creatives (files or links)',h:'1–2 variations from the best static, same qualifier.',t:'both'},
+ {p:'Creatives',k:'finalBrief',q:'Paste the link to the published final brief',h:'Drafts removed, final creatives dragged in, Publish clicked.',t:'text'},
+ {p:'Landing page',k:'repo',q:'Paste the link to the new GitHub repo',h:'Download Mortgage Daddy Variation V2 as ZIP, create a repo named after the client, then run this in Claude Code with the ZIP dragged in.',t:'text',prompt:'This is a repo of a landing page. Please input it into this repo. You will need to unpack the zip, push to main, do not change a single thing.'},
+ {p:'Landing page',k:'vercel',q:'Paste the Vercel deployment URL',h:'Vercel → Import the repo → name it after the client → Deploy.',t:'text'},
+ {p:'Landing page',k:'domain',q:'What is the live domain?',h:'clientname.scalbl.io (no go. prefix). Vercel → Domains → Add Existing. Cloudflare → DNS → CNAME, name = client, target = Vercel value, proxy off, TTL 1 min.',t:'text'},
+ {p:'Landing page',k:'headline',q:'What is the landing page headline?',h:'Paste it, then copy the prompt into Claude Code.',t:'long',tpl:'Change the headline to: "{headline}". Add some colouring and design features to make it look a bit more corporate. Don\'t overdo it.'},
+ {p:'Landing page',k:'survey',q:'What are the survey questions and DQ rules?',h:'Built from the qualifiers. Mark disqualifying answers with DQ. Then copy the prompt into Claude Code.',t:'long',tpl:'Change the survey to conditional logic with these questions:\n{survey}\n\nPlease ensure after the user clicks an answer (including any sliding scale) it auto-slides to the next question. Finish with "Enter your details to finalise your application": full name, email, phone, submit, then show a thank-you screen.'},
+ {p:'Landing page',k:'pixel',q:'What is the Meta pixel ID?',h:'Fresh pixel via Hermes, or an existing one. Then copy the prompt into Claude Code.',t:'text',tpl:'Please add this Meta pixel: {pixel}. Fire off a Lead event when the user submits the survey.'},
+ {p:'Landing page',k:'desktopTest',q:'Paste your desktop test notes',h:'Every question, every DQ path, the thank-you screen. Note anything fixed.',t:'long'},
+ {p:'Landing page',k:'mobileTest',q:'Input a mobile screenshot of the live page',h:'Check the business name at the top, the slider and submit. Last time the mobile version showed the wrong business name.',t:'both'},
+ {p:'Launch',k:'adAccount',q:'What is the ad account name?',h:'Meta Business Settings: assign ad account, page and pixel to the Scalbl System User with full access. Re-fetch pages and pixels in AdSwarm.',t:'text'},
+ {p:'Launch',k:'page',q:'Which Facebook page will the ads run on?',h:'Use a Scalbl dummy page until the winning creative is proven. Do not share creatives with the client yet.',t:'text'},
+ {p:'Launch',k:'headlines',q:'Paste the headlines',h:'AdSwarm → Generate with AI. If it fails, ask Claude for short Meta headlines.',t:'long'},
+ {p:'Launch',k:'location',q:'What location targeting?',h:'Australia-wide unless the brief says otherwise. Objective is Leads. Destination is the landing page.',t:'text'},
+ {p:'Launch',k:'targeting',q:'What is Ad Set 1 detailed targeting?',h:'Minimum 1M audience. Ad Set 2 is Advantage+ broad. Creatives: Add from Uploads (resize in Canva if too big).',t:'long'},
+ {p:'Launch',k:'campaign',q:'What is the campaign name in Ads Manager?',h:'AdSwarm → Preview what Hermes receives → paste into Hermes to launch. If Hermes cannot set advertiser or verification fields, make a dummy campaign by hand, then ask Hermes to edit it. Confirm it is switched on.',t:'text'},
+ {p:'Launch',k:'tab',q:'What is the Client Lead List tab (number and name)?',h:'Copy the prompt into Claude Code, then confirm the tab exists and the Make scenario is on.',t:'text',prompt:'Please create a Make automation so the leads go to a new tab on the Client Lead List. Create and number the tab accordingly. Ensure all criteria is pushed through.'},
+ {p:'Launch',k:'subTest',q:'Input the submission test result (screenshot of the lead row, or paste it)',h:'Fill the live survey as a test lead. It must land in the tab with all fields.',t:'both'},
+ {p:'Launch',k:'clientMsg',q:'Paste the message you sent the client',h:'Live, where leads appear, what we need from them. Keep it short.',t:'long'},
+];
+
+const KEY='scalbl-launch-runs-v2', MAXDATA=350*1024;
+let runs={}, current=null, idx=0, summary=false;
+const $=id=>document.getElementById(id);
+function clean(){ Object.keys(runs).forEach(id=>{const r=runs[id]; if(!r||typeof r!=='object'||!r.values||!r.files){ if(r&&r.values&&!r.files)r.files={}; else delete runs[id]; } }); }
+function load(){ try{runs=JSON.parse(localStorage.getItem(KEY)||'{}')||{};}catch(e){runs={};} clean(); }
+function save(){ try{localStorage.setItem(KEY,JSON.stringify(runs));}catch(e){ Object.values(runs).forEach(r=>Object.values(r.files||{}).forEach(fs=>fs.forEach(f=>delete f.data))); try{localStorage.setItem(KEY,JSON.stringify(runs));toast('Storage full: file previews dropped');}catch(e2){} } }
+function run(){return runs[current];}
+function newRun(){ const id='r'+Date.now(); runs[id]={values:{},files:{},created:new Date().toISOString().slice(0,10)}; current=id; idx=0; summary=false; save(); render(); }
+function toast(m){ const t=$('toast'); t.textContent=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),1400); }
+function copy(text){ navigator.clipboard.writeText(text).then(()=>toast('Copied')).catch(()=>{const ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();try{document.execCommand('copy');toast('Copied');}catch(e){toast('Select and copy manually');}ta.remove();}); }
+function esc(s){return String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function fill(tpl,v){return tpl.replace(/\{(\w+)\}/g,(m,k)=>v[k]||'[fill in]');}
+function answered(r,q){ return !!(r.values[q.k]&&r.values[q.k].trim()) || !!(r.files[q.k]&&r.files[q.k].length); }
+function fmtSize(b){return b>1e6?(b/1e6).toFixed(1)+' MB':Math.round(b/1024)+' KB';}
+function linkify(s){return esc(s).replace(/(https?:\/\/[^\s<]+)/g,'<a href="$1" target="_blank" rel="noopener">$1</a>');}
+
+function renderRunSelect(){ const sel=$('runSelect'); sel.innerHTML=''; Object.entries(runs).forEach(([id,r])=>{const o=document.createElement('option');o.value=id;o.textContent=(r.values.client||'Unnamed')+' · '+r.created;if(id===current)o.selected=true;sel.appendChild(o);}); }
+function renderTop(){ const r=run(); const d=Q.filter(q=>answered(r,q)).length; $('bar').style.width=(100*d/Q.length)+'%'; $('metaL').textContent=summary?'Summary':('Question '+(idx+1)+' of '+Q.length); $('metaR').textContent=d+' answered';
+  const j=$('jump'); j.innerHTML=''; Q.forEach((q,i)=>{const b=document.createElement('button');b.textContent=i+1;b.title=q.q;b.className=(answered(r,q)?'done ':'')+(i===idx&&!summary?'cur':'');b.onclick=()=>{idx=i;summary=false;render();};j.appendChild(b);}); const s=document.createElement('button');s.textContent='Σ';s.title='Summary';s.className=summary?'cur':'';s.onclick=()=>{summary=true;render();};j.appendChild(s); }
+
+function renderQ(){
+  const r=run(), q=Q[idx], v=r.values[q.k]||'', files=r.files[q.k]||[];
+  let h='<span class="phase-tag">'+esc(q.p)+'</span><div class="q">'+esc(q.q)+'</div>'+(q.h?'<p class="hint">'+esc(q.h)+'</p>':'');
+  if(q.t==='text')h+='<input type="text" id="ans" value="'+esc(v)+'" placeholder="Type or paste here">';
+  if(q.t==='long'||q.t==='both')h+='<textarea id="ans" placeholder="'+(q.t==='both'?'Paste a link or text here':'Type or paste here')+'">'+esc(v)+'</textarea>';
+  if(q.t==='file'||q.t==='both'){ h+='<label class="drop" id="drop">Drop files here or click to choose<input type="file" id="fileIn" multiple></label><div class="files" id="fileList">'; files.forEach((f,i)=>{h+='<div class="file">'+(f.data?'<img src="'+f.data+'" alt="">':'')+'<span class="n">'+esc(f.name)+'</span><span class="s">'+fmtSize(f.size)+'</span><button class="small" data-rm="'+i+'">Remove</button></div>';}); h+='</div>'; }
+  const pr=q.prompt||(q.tpl?fill(q.tpl,r.values):null);
+  if(pr)h+='<div class="prompt-label">Claude Code prompt</div><div class="prompt" id="pr">'+esc(pr)+'<button class="small" id="copyPr">Copy</button></div>';
+  h+='<div class="nav"><button id="prev"'+(idx===0?' disabled':'')+'>Back</button><div class="r"><button class="link" id="skip">Skip</button><button class="primary" id="next">'+(idx<Q.length-1?'Next':'Finish')+'</button></div></div>';
+  $('card').innerHTML=h;
+  const a=$('ans'); if(a){ a.oninput=()=>{ r.values[q.k]=a.value; save(); if(q.tpl)$('pr').firstChild.textContent=fill(q.tpl,r.values); if(q.k==='client')renderRunSelect(); }; if(q.t==='text')a.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();next();}}; setTimeout(()=>a.focus(),50); }
+  const fi=$('fileIn'); if(fi){ const drop=$('drop'); fi.onchange=()=>addFiles(fi.files); drop.ondragover=e=>{e.preventDefault();drop.classList.add('over');}; drop.ondragleave=()=>drop.classList.remove('over'); drop.ondrop=e=>{e.preventDefault();drop.classList.remove('over');addFiles(e.dataTransfer.files);}; $('card').querySelectorAll('[data-rm]').forEach(b=>b.onclick=()=>{files.splice(+b.dataset.rm,1);r.files[q.k]=files;save();render();}); }
+  if(pr)$('copyPr').onclick=()=>copy($('pr').firstChild.textContent);
+  $('prev').onclick=()=>{idx--;render();}; $('skip').onclick=next; $('next').onclick=next;
+  function next(){ if(idx<Q.length-1)idx++; else summary=true; render(); window.scrollTo({top:0}); }
+  function addFiles(list){ const arr=r.files[q.k]||(r.files[q.k]=[]); let pending=0; Array.from(list).forEach(f=>{ const rec={name:f.name,size:f.size,type:f.type}; arr.push(rec); if(f.type.startsWith('image/')&&f.size<=MAXDATA){ pending++; const rd=new FileReader(); rd.onload=()=>{rec.data=rd.result; if(--pending===0){save();render();}}; rd.readAsDataURL(f);} }); if(!pending){save();render();} }
+}
+
+function summaryText(){ const r=run(); const L=['LAUNCH SUMMARY: '+(r.values.client||'Unnamed'),'Started '+r.created,'']; let p=''; Q.forEach(q=>{ if(q.p!==p){p=q.p;L.push('','## '+p.toUpperCase());} const fs=(r.files[q.k]||[]).map(f=>f.name).join(', '); const v=(r.values[q.k]||'').trim(); L.push(q.q); L.push('  '+(v||fs?[v,fs?'Files: '+fs:''].filter(Boolean).join('\n  '):'(not answered)')); }); const miss=Q.filter(q=>!answered(r,q)); L.push('',miss.length?'NOT ANSWERED ('+miss.length+'):':'ALL QUESTIONS ANSWERED'); miss.forEach(q=>L.push('- '+q.q)); return L.join('\n'); }
+function renderSummary(){ const r=run(); const miss=Q.filter(q=>!answered(r,q)); let h='<span class="phase-tag">Result</span><div class="q">'+esc(r.values.client||'Unnamed')+' launch document</div><p class="hint">'+(miss.length?miss.length+' questions not answered yet. Click a number above to go back.':'All '+Q.length+' questions answered.')+'</p><div class="nav" style="margin:0 0 8px"><button class="primary" id="copySum">Copy as text</button><button id="restart">Back to question 1</button></div><div class="summary">'; let p=''; Q.forEach(q=>{ if(q.p!==p){p=q.p;h+='<h3>'+esc(p)+'</h3>';} const fs=r.files[q.k]||[]; const v=(r.values[q.k]||'').trim(); h+='<div class="row"><span class="k">'+esc(q.q)+'</span><span class="v'+(!v&&!fs.length?' empty':'')+'">'+(v?linkify(v):'')+(fs.length?(v?'<br>':'')+'Files: '+esc(fs.map(f=>f.name).join(', ')):'')+(!v&&!fs.length?'not answered':'')+'</span></div>'; }); h+='</div>'; $('card').innerHTML=h; $('copySum').onclick=()=>copy(summaryText()); $('restart').onclick=()=>{idx=0;summary=false;render();}; }
+
+function render(){ try{ if(!current||!runs[current]){const ids=Object.keys(runs); if(ids.length)current=ids[ids.length-1]; else{newRun();return;}} renderRunSelect(); renderTop(); if(summary)renderSummary(); else renderQ(); }catch(e){ runs={}; current=null; idx=0; summary=false; try{localStorage.removeItem(KEY);}catch(x){} newRun(); } }
+$('runSelect').onchange=e=>{current=e.target.value;idx=0;summary=false;render();};
+$('newRun').onclick=newRun;
+$('deleteRun').onclick=()=>{ if(Object.keys(runs).length<=1){toast('Keep at least one run');return;} const b=$('deleteRun'); if(b.dataset.arm){delete runs[current];current=null;delete b.dataset.arm;b.textContent='Delete';save();render();} else {b.dataset.arm='1';b.textContent='Confirm delete';setTimeout(()=>{delete b.dataset.arm;b.textContent='Delete';},2500);} };
+function start(){load();render();}
+window.claude?.hot?.snapshot?.(()=>({runs,current,idx,summary}));
+if(window.claude?.hot?.ready){window.claude.hot.ready(d=>{load();if(d&&d.runs&&d.current&&d.runs[d.current]&&d.runs[d.current].files){runs=d.runs;current=d.current;idx=d.idx||0;summary=!!d.summary;clean();}render();});}else start();
+</script>
+</body>
+</html>
